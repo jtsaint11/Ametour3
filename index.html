@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Ametour" />
+  <title>Ametour - Virtual Country Club</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', system-ui, sans-serif; background: #0f172a; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Icon components using Lucide
+    const Icon = ({ name, className }) => {
+      const ref = React.useRef(null);
+      useEffect(() => {
+        if (ref.current) {
+          ref.current.innerHTML = '';
+          lucide.createElement(lucide.icons[name]).forEach(child => {
+            ref.current.appendChild(child);
+          });
+        }
+      }, [name]);
+      return <span ref={ref} className={className} style={{display: 'inline-flex'}} />;
+    };
+
+    // Mock data
+    const mockUser = {
+      id: 1, name: "Marcus Webb", avatar: "MW", handicap: 8.4,
+      balance: 2450.00, tours: [1], seasonPoints: 847, wins: 3, topTens: 8
+    };
+
+    const mockTours = [
+      { id: 1, name: "The Founders Cup 2025", commissioner: "James Richardson", buyIn: 500, seasonPrize: 5000, weeklyPrize: 500, players: 12, maxPlayers: 16, status: "active", currentEvent: 4, totalEvents: 12, inviteCode: "FCUP25", description: "Premium tour for serious competitors." },
+      { id: 2, name: "Sunday Skins League", commissioner: "Mike Torres", buyIn: 200, seasonPrize: 2000, weeklyPrize: 200, players: 8, maxPlayers: 12, status: "recruiting", currentEvent: 0, totalEvents: 8, inviteCode: "SSL2025", description: "Casual Sunday rounds with friends." }
+    ];
+
+    const mockEvents = [
+      { id: 1, tourId: 1, name: "The Memorial", course: "Pebble Beach Golf Links", date: "2025-01-15", buyIn: 50, prizePool: 600, status: "completed", eventNumber: 1, winner: "David Kim", playerCount: 12 },
+      { id: 2, tourId: 1, name: "Desert Classic", course: "TPC Scottsdale", date: "2025-01-22", buyIn: 50, prizePool: 600, status: "completed", eventNumber: 2, winner: "Marcus Webb", playerCount: 12 },
+      { id: 3, tourId: 1, name: "Coastal Open", course: "Torrey Pines South", date: "2025-01-29", buyIn: 50, prizePool: 600, status: "completed", eventNumber: 3, winner: "James Richardson", playerCount: 11 },
+      { id: 4, tourId: 1, name: "The Championship", course: "Augusta National", date: "2025-02-05", buyIn: 75, prizePool: 900, status: "active", eventNumber: 4, playerCount: 12, currentRound: 2, totalRounds: 4 },
+      { id: 5, tourId: 1, name: "Players Championship", course: "TPC Sawgrass", date: "2025-02-12", buyIn: 50, prizePool: 600, status: "upcoming", eventNumber: 5, registrationOpen: true }
+    ];
+
+    const mockLeaderboard = [
+      { rank: 1, name: "James Richardson", points: 1247, wins: 4, avatar: "JR", trend: "up" },
+      { rank: 2, name: "Marcus Webb", points: 847, wins: 3, avatar: "MW", trend: "up" },
+      { rank: 3, name: "David Kim", points: 792, wins: 2, avatar: "DK", trend: "down" },
+      { rank: 4, name: "Chris Martinez", points: 654, wins: 1, avatar: "CM", trend: "same" },
+      { rank: 5, name: "Alex Thompson", points: 598, wins: 1, avatar: "AT", trend: "up" },
+      { rank: 6, name: "Ryan Chen", points: 521, wins: 0, avatar: "RC", trend: "down" },
+      { rank: 7, name: "Mike Torres", points: 487, wins: 0, avatar: "MT", trend: "same" },
+      { rank: 8, name: "Josh Williams", points: 423, wins: 0, avatar: "JW", trend: "up" },
+    ];
+
+    const mockCurrentEventLeaderboard = [
+      { rank: 1, name: "Marcus Webb", score: -6, today: -3, thru: 14, avatar: "MW" },
+      { rank: 2, name: "James Richardson", score: -5, today: -2, thru: 16, avatar: "JR" },
+      { rank: 3, name: "David Kim", score: -4, today: -1, thru: 15, avatar: "DK" },
+      { rank: 4, name: "Alex Thompson", score: -3, today: "E", thru: 13, avatar: "AT" },
+      { rank: 5, name: "Chris Martinez", score: -2, today: +1, thru: 17, avatar: "CM" },
+    ];
+
+    const mockSideBets = [
+      { id: 1, type: "Nassau", opponent: "James Richardson", amount: 20, status: "active", eventId: 4 },
+      { id: 2, type: "Skins", participants: ["David Kim", "Alex Thompson"], amount: 5, status: "active", eventId: 4 },
+      { id: 3, type: "Low Score", opponent: "Chris Martinez", amount: 50, status: "won", eventId: 3, result: "+$50" },
+      { id: 4, type: "Closest to Pin #7", participants: 6, amount: 10, status: "lost", eventId: 3, result: "-$10" },
+    ];
+
+    const mockNotifications = [
+      { id: 1, type: "event", message: "Round 2 of The Championship starts tomorrow", time: "2h ago", read: false },
+      { id: 2, type: "bet", message: "James Richardson accepted your Nassau bet", time: "5h ago", read: false },
+      { id: 3, type: "payment", message: "You received $150 from Desert Classic winnings", time: "1d ago", read: true },
+    ];
+
+    // Components
+    const Avatar = ({ initials, size = "md", highlight = false }) => {
+      const sizes = { sm: "w-8 h-8 text-xs", md: "w-10 h-10 text-sm", lg: "w-14 h-14 text-lg", xl: "w-20 h-20 text-2xl" };
+      return (
+        <div className={`${sizes[size]} rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-bold text-white ${highlight ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900' : ''}`}>
+          {initials}
+        </div>
+      );
+    };
+
+    const StatCard = ({ icon, label, value, subValue, highlight = false }) => (
+      <div className={`p-4 rounded-2xl ${highlight ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30' : 'bg-slate-800/50 border border-slate-700/50'}`}>
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl ${highlight ? 'bg-amber-500/20' : 'bg-slate-700/50'}`}>
+            <Icon name={icon} className={`w-5 h-5 ${highlight ? 'text-amber-400' : 'text-emerald-400'}`} />
+          </div>
+          <div>
+            <p className="text-slate-400 text-xs uppercase tracking-wider">{label}</p>
+            <p className={`text-xl font-bold ${highlight ? 'text-amber-400' : 'text-white'}`}>{value}</p>
+            {subValue && <p className="text-slate-500 text-xs">{subValue}</p>}
+          </div>
+        </div>
+      </div>
+    );
+
+    // Dashboard View
+    const Dashboard = ({ user, setActiveView, setSelectedEvent }) => {
+      const activeEvent = mockEvents.find(e => e.status === 'active');
+      const upcomingEvent = mockEvents.find(e => e.status === 'upcoming');
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Welcome back, {user.name.split(' ')[0]}</h1>
+              <p className="text-slate-400 mt-1">You're currently ranked #2 in The Founders Cup</p>
+            </div>
+            <Avatar initials={user.avatar} size="lg" highlight />
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon="dollar-sign" label="Balance" value={`$${user.balance.toLocaleString()}`} />
+            <StatCard icon="trophy" label="Season Points" value={user.seasonPoints} highlight />
+            <StatCard icon="award" label="Wins" value={user.wins} subValue="This season" />
+            <StatCard icon="target" label="Handicap" value={user.handicap} />
+          </div>
+
+          {activeEvent && (
+            <div 
+              className="bg-gradient-to-br from-emerald-900/50 to-slate-800/50 rounded-3xl p-6 border border-emerald-500/30 cursor-pointer hover:border-emerald-500/50 transition-all"
+              onClick={() => { setSelectedEvent(activeEvent); setActiveView('event'); }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="px-3 py-1 bg-emerald-500/20 rounded-full">
+                  <span className="text-emerald-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    Live Now
+                  </span>
+                </div>
+                <span className="text-slate-500 text-sm">Round {activeEvent.currentRound} of {activeEvent.totalRounds}</span>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-2">{activeEvent.name}</h2>
+              <div className="flex items-center gap-4 text-slate-400 text-sm mb-4">
+                <span className="flex items-center gap-1"><Icon name="map-pin" className="w-4 h-4" />{activeEvent.course}</span>
+                <span className="flex items-center gap-1"><Icon name="dollar-sign" className="w-4 h-4" />${activeEvent.prizePool} Prize Pool</span>
+              </div>
+
+              <div className="bg-slate-900/50 rounded-2xl p-4">
+                <p className="text-slate-400 text-xs uppercase tracking-wider mb-3">Current Leaderboard</p>
+                <div className="space-y-2">
+                  {mockCurrentEventLeaderboard.slice(0, 3).map((player, i) => (
+                    <div key={i} className={`flex items-center justify-between py-2 ${player.name === user.name ? 'bg-emerald-500/10 -mx-2 px-2 rounded-lg' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 text-center font-bold ${i === 0 ? 'text-amber-400' : 'text-slate-500'}`}>{player.rank}</span>
+                        <Avatar initials={player.avatar} size="sm" />
+                        <span className={`font-medium ${player.name === user.name ? 'text-emerald-400' : 'text-white'}`}>{player.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className={`font-mono font-bold ${player.score < 0 ? 'text-red-400' : 'text-white'}`}>{player.score}</span>
+                        <span className="text-slate-500 text-sm w-16 text-right">Thru {player.thru}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end mt-4 text-emerald-400 text-sm font-medium">
+                View Full Leaderboard <Icon name="chevron-right" className="w-4 h-4" />
+              </div>
+            </div>
+          )}
+
+          {upcomingEvent && (
+            <div className="bg-slate-800/50 rounded-3xl p-6 border border-slate-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="px-3 py-1 bg-slate-700 rounded-full">
+                  <span className="text-slate-300 text-xs font-semibold uppercase tracking-wider">Up Next</span>
+                </div>
+                <span className="text-slate-500 text-sm">{new Date(upcomingEvent.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+              </div>
+              
+              <h3 className="text-xl font-bold text-white mb-2">{upcomingEvent.name}</h3>
+              <div className="flex items-center gap-4 text-slate-400 text-sm mb-4">
+                <span className="flex items-center gap-1"><Icon name="map-pin" className="w-4 h-4" />{upcomingEvent.course}</span>
+                <span className="flex items-center gap-1"><Icon name="dollar-sign" className="w-4 h-4" />${upcomingEvent.buyIn} Buy-in</span>
+              </div>
+              
+              <button className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-xl transition-colors">
+                Register Now — ${upcomingEvent.buyIn}
+              </button>
+            </div>
+          )}
+
+          <div className="bg-slate-800/50 rounded-3xl p-6 border border-slate-700/50">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Icon name="hand-coins" className="w-5 h-5 text-amber-400" />
+                Active Side Bets
+              </h3>
+            </div>
+            
+            <div className="space-y-3">
+              {mockSideBets.filter(b => b.status === 'active').map(bet => (
+                <div key={bet.id} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-xl">
+                  <div>
+                    <p className="text-white font-medium">{bet.type}</p>
+                    <p className="text-slate-400 text-sm">vs {bet.opponent || bet.participants?.join?.(', ')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-amber-400 font-bold">${bet.amount}</p>
+                    <p className="text-slate-500 text-xs">Per side</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Tours View
+    const ToursView = ({ user }) => {
+      const myTours = mockTours.filter(t => user.tours.includes(t.id));
+      const invitedTours = mockTours.filter(t => !user.tours.includes(t.id));
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Your Tours</h1>
+            <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white font-medium rounded-xl transition-colors">
+              <Icon name="plus" className="w-4 h-4" />
+              Join Tour
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {myTours.map(tour => (
+              <div key={tour.id} className="bg-gradient-to-br from-slate-800/80 to-slate-800/40 rounded-3xl p-6 border border-slate-700/50 cursor-pointer hover:border-emerald-500/50 transition-all">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full uppercase">Active</span>
+                      <span className="text-slate-500 text-sm">Event {tour.currentEvent} of {tour.totalEvents}</span>
+                    </div>
+                    <h2 className="text-xl font-bold text-white">{tour.name}</h2>
+                    <p className="text-slate-400 text-sm mt-1">Commissioner: {tour.commissioner}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-amber-400">${tour.seasonPrize.toLocaleString()}</p>
+                    <p className="text-slate-500 text-xs">Season Prize</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="bg-slate-900/50 rounded-xl p-3 text-center">
+                    <p className="text-slate-400 text-xs">Buy-in</p>
+                    <p className="text-white font-bold">${tour.buyIn}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 text-center">
+                    <p className="text-slate-400 text-xs">Weekly</p>
+                    <p className="text-white font-bold">${tour.weeklyPrize}</p>
+                  </div>
+                  <div className="bg-slate-900/50 rounded-xl p-3 text-center">
+                    <p className="text-slate-400 text-xs">Players</p>
+                    <p className="text-white font-bold">{tour.players}/{tour.maxPlayers}</p>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex justify-between text-xs text-slate-500 mb-1">
+                    <span>Season Progress</span>
+                    <span>{Math.round((tour.currentEvent / tour.totalEvents) * 100)}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full" style={{ width: `${(tour.currentEvent / tour.totalEvents) * 100}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {invitedTours.length > 0 && (
+            <>
+              <h2 className="text-lg font-bold text-white mt-8">Invitations</h2>
+              <div className="space-y-4">
+                {invitedTours.map(tour => (
+                  <div key={tour.id} className="bg-slate-800/50 rounded-3xl p-6 border border-amber-500/30">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full uppercase">Recruiting</span>
+                        <h2 className="text-xl font-bold text-white mt-2">{tour.name}</h2>
+                        <p className="text-slate-400 text-sm mt-1">Commissioner: {tour.commissioner}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-amber-400">${tour.seasonPrize.toLocaleString()}</p>
+                        <p className="text-slate-500 text-xs">Season Prize</p>
+                      </div>
+                    </div>
+                    <p className="text-slate-400 text-sm mb-4">{tour.description}</p>
+                    <button className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-xl transition-colors">
+                      Join Tour — ${tour.buyIn}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    };
+
+    // Events View
+    const EventsView = ({ setActiveView, setSelectedEvent }) => {
+      const [filter, setFilter] = useState('all');
+      const filteredEvents = filter === 'all' ? mockEvents : mockEvents.filter(e => e.status === filter);
+
+      return (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold text-white">Events</h1>
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {['all', 'active', 'upcoming', 'completed'].map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${filter === f ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {filteredEvents.map(event => (
+              <div key={event.id} onClick={() => { setSelectedEvent(event); setActiveView('event'); }}
+                className={`rounded-2xl p-5 border cursor-pointer transition-all ${event.status === 'active' ? 'bg-gradient-to-br from-emerald-900/50 to-slate-800/50 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600'}`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      {event.status === 'active' && (
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full uppercase flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />Live
+                        </span>
+                      )}
+                      {event.status === 'upcoming' && <span className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs font-semibold rounded-full uppercase">Upcoming</span>}
+                      {event.status === 'completed' && <span className="px-2 py-0.5 bg-slate-700/50 text-slate-500 text-xs font-semibold rounded-full uppercase">Completed</span>}
+                    </div>
+                    <h3 className="text-lg font-bold text-white">{event.name}</h3>
+                    <p className="text-slate-400 text-sm">{event.course}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-amber-400">${event.prizePool}</p>
+                    <p className="text-slate-500 text-xs">Prize Pool</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-slate-400 text-sm">
+                    <span className="flex items-center gap-1"><Icon name="calendar" className="w-4 h-4" />{new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span className="flex items-center gap-1"><Icon name="users" className="w-4 h-4" />{event.playerCount} players</span>
+                  </div>
+                  {event.status === 'completed' && event.winner && (
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <Icon name="trophy" className="w-4 h-4" />
+                      <span className="text-sm font-medium">{event.winner}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // Leaderboard View
+    const LeaderboardView = ({ user }) => (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
+
+        <div className="flex items-end justify-center gap-4 py-6">
+          <div className="flex flex-col items-center">
+            <Avatar initials={mockLeaderboard[1].avatar} size="lg" highlight={mockLeaderboard[1].name === user.name} />
+            <div className="mt-2 text-center">
+              <p className="font-bold text-white">{mockLeaderboard[1].name.split(' ')[0]}</p>
+              <p className="text-slate-400 text-sm">{mockLeaderboard[1].points} pts</p>
+            </div>
+            <div className="mt-2 w-20 h-16 bg-slate-700 rounded-t-lg flex items-center justify-center">
+              <span className="text-2xl font-bold text-slate-400">2</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-center">
+            <Icon name="crown" className="w-8 h-8 text-amber-400 mb-2" />
+            <Avatar initials={mockLeaderboard[0].avatar} size="xl" />
+            <div className="mt-2 text-center">
+              <p className="font-bold text-white">{mockLeaderboard[0].name.split(' ')[0]}</p>
+              <p className="text-amber-400 text-sm font-bold">{mockLeaderboard[0].points} pts</p>
+            </div>
+            <div className="mt-2 w-24 h-24 bg-gradient-to-t from-amber-600 to-amber-500 rounded-t-lg flex items-center justify-center">
+              <span className="text-3xl font-bold text-white">1</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-center">
+            <Avatar initials={mockLeaderboard[2].avatar} size="lg" />
+            <div className="mt-2 text-center">
+              <p className="font-bold text-white">{mockLeaderboard[2].name.split(' ')[0]}</p>
+              <p className="text-slate-400 text-sm">{mockLeaderboard[2].points} pts</p>
+            </div>
+            <div className="mt-2 w-20 h-12 bg-amber-900/50 rounded-t-lg flex items-center justify-center">
+              <span className="text-2xl font-bold text-amber-700">3</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 overflow-hidden">
+          {mockLeaderboard.map((player, i) => (
+            <div key={i} className={`flex items-center justify-between px-4 py-4 border-t border-slate-700/50 ${player.name === user.name ? 'bg-emerald-500/10' : ''}`}>
+              <div className="flex items-center gap-3">
+                <span className={`w-6 font-bold ${i < 3 ? 'text-amber-400' : 'text-slate-500'}`}>{player.rank}</span>
+                <Avatar initials={player.avatar} size="sm" highlight={player.name === user.name} />
+                <span className={`font-medium ${player.name === user.name ? 'text-emerald-400' : 'text-white'}`}>{player.name}</span>
+              </div>
+              <div className="flex items-center gap-6">
+                <span className="font-bold text-white">{player.points} pts</span>
+                <span className="text-slate-400 w-8">{player.wins}W</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    // Side Bets View
+    const SideBetsView = ({ user }) => {
+      const activeBets = mockSideBets.filter(b => b.status === 'active');
+      const completedBets = mockSideBets.filter(b => b.status !== 'active');
+
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Side Bets</h1>
+            <button className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium rounded-xl transition-colors">
+              <Icon name="plus" className="w-4 h-4" />
+              New Bet
+            </button>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-2xl p-5 border border-amber-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-slate-400 text-sm">Available Balance</p>
+                <p className="text-3xl font-bold text-amber-400">${user.balance.toLocaleString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl">Deposit</button>
+                <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl">Withdraw</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-white mb-4">Active Bets</h2>
+            <div className="space-y-3">
+              {activeBets.map(bet => (
+                <div key={bet.id} className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-500/20 rounded-xl">
+                        <Icon name="hand-coins" className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold">{bet.type}</p>
+                        <p className="text-slate-400 text-sm">vs {bet.opponent || bet.participants?.join?.(', ')}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-amber-400 font-bold text-lg">${bet.amount}</p>
+                      <p className="text-slate-500 text-xs">Per side</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-white mb-4">History</h2>
+            <div className="space-y-3">
+              {completedBets.map(bet => (
+                <div key={bet.id} className="bg-slate-800/30 rounded-2xl p-4 border border-slate-700/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${bet.status === 'won' ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                        <Icon name={bet.status === 'won' ? 'check' : 'x'} className={`w-5 h-5 ${bet.status === 'won' ? 'text-emerald-400' : 'text-red-400'}`} />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{bet.type}</p>
+                        <p className="text-slate-500 text-sm">vs {bet.opponent || `${bet.participants} players`}</p>
+                      </div>
+                    </div>
+                    <p className={`font-bold text-lg ${bet.status === 'won' ? 'text-emerald-400' : 'text-red-400'}`}>{bet.result}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Wallet View
+    const WalletView = ({ user }) => {
+      const transactions = [
+        { id: 1, type: 'win', description: 'Desert Classic - 1st Place', amount: 300, date: '2025-01-22' },
+        { id: 2, type: 'buyin', description: 'The Championship Entry', amount: -75, date: '2025-02-03' },
+        { id: 3, type: 'bet', description: 'Side Bet Win vs Chris', amount: 50, date: '2025-01-29' },
+        { id: 4, type: 'deposit', description: 'Deposit via Venmo', amount: 500, date: '2025-01-20' },
+      ];
+
+      return (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold text-white">Wallet</h1>
+
+          <div className="bg-gradient-to-br from-emerald-900/50 to-slate-800/50 rounded-3xl p-6 border border-emerald-500/30">
+            <p className="text-slate-400 text-sm mb-1">Total Balance</p>
+            <p className="text-4xl font-bold text-white mb-6">${user.balance.toLocaleString()}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button className="py-3 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
+                <Icon name="plus" className="w-5 h-5" />Deposit
+              </button>
+              <button className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2">
+                <Icon name="dollar-sign" className="w-5 h-5" />Withdraw
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-white mb-4">Transaction History</h2>
+            <div className="space-y-2">
+              {transactions.map(tx => (
+                <div key={tx.id} className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${tx.amount > 0 ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+                      <Icon name={tx.type === 'win' ? 'trophy' : tx.type === 'deposit' ? 'plus' : tx.type === 'bet' ? 'hand-coins' : 'flag'} 
+                        className={`w-5 h-5 ${tx.amount > 0 ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">{tx.description}</p>
+                      <p className="text-slate-500 text-sm">{new Date(tx.date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <span className={`font-bold ${tx.amount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {tx.amount > 0 ? '+' : ''}{tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Event Detail View
+    const EventDetailView = ({ event, user, setActiveView }) => {
+      if (!event) return null;
+
+      return (
+        <div className="space-y-6">
+          <button onClick={() => setActiveView('events')} className="text-slate-400 hover:text-white text-sm flex items-center gap-1 mb-4">
+            ← Back to Events
+          </button>
+          
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              {event.status === 'active' && (
+                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full uppercase flex items-center gap-1">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  Live - Round {event.currentRound}
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-2">{event.name}</h1>
+            <div className="flex flex-wrap items-center gap-4 text-slate-400">
+              <span className="flex items-center gap-1"><Icon name="map-pin" className="w-4 h-4" />{event.course}</span>
+              <span className="flex items-center gap-1"><Icon name="calendar" className="w-4 h-4" />{new Date(event.date).toLocaleDateString()}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-2xl p-4 border border-amber-500/30 text-center">
+              <Icon name="trophy" className="w-6 h-6 text-amber-400 mx-auto mb-2" />
+              <p className="text-slate-400 text-xs">1st Place</p>
+              <p className="text-xl font-bold text-amber-400">${Math.round(event.prizePool * 0.5)}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 text-center">
+              <Icon name="medal" className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+              <p className="text-slate-400 text-xs">2nd Place</p>
+              <p className="text-xl font-bold text-white">${Math.round(event.prizePool * 0.3)}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 text-center">
+              <Icon name="star" className="w-6 h-6 text-slate-500 mx-auto mb-2" />
+              <p className="text-slate-400 text-xs">3rd Place</p>
+              <p className="text-xl font-bold text-white">${Math.round(event.prizePool * 0.2)}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 overflow-hidden">
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+              <div className="col-span-1">Pos</div>
+              <div className="col-span-5">Player</div>
+              <div className="col-span-2 text-center">Today</div>
+              <div className="col-span-2 text-center">Thru</div>
+              <div className="col-span-2 text-right">Total</div>
+            </div>
+            {mockCurrentEventLeaderboard.map((player, i) => (
+              <div key={i} className={`grid grid-cols-12 gap-2 px-4 py-4 border-t border-slate-700/50 items-center ${player.name === user.name ? 'bg-emerald-500/10' : ''}`}>
+                <div className="col-span-1"><span className={`font-bold ${i === 0 ? 'text-amber-400' : 'text-slate-500'}`}>{player.rank}</span></div>
+                <div className="col-span-5 flex items-center gap-2">
+                  <Avatar initials={player.avatar} size="sm" highlight={player.name === user.name} />
+                  <span className={`font-medium ${player.name === user.name ? 'text-emerald-400' : 'text-white'}`}>{player.name}</span>
+                </div>
+                <div className="col-span-2 text-center">
+                  <span className={`font-mono ${typeof player.today === 'number' && player.today < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                    {typeof player.today === 'number' ? (player.today > 0 ? '+' : '') + player.today : player.today}
+                  </span>
+                </div>
+                <div className="col-span-2 text-center text-slate-400">{player.thru}</div>
+                <div className="col-span-2 text-right">
+                  <span className={`font-mono font-bold ${player.score < 0 ? 'text-red-400' : 'text-white'}`}>{player.score}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // Main App
+    function App() {
+      const [user] = useState(mockUser);
+      const [activeView, setActiveView] = useState('dashboard');
+      const [selectedEvent, setSelectedEvent] = useState(null);
+      const [showNotifications, setShowNotifications] = useState(false);
+      const unreadCount = mockNotifications.filter(n => !n.read).length;
+
+      const tabs = [
+        { id: 'dashboard', label: 'Home', icon: 'circle-dot' },
+        { id: 'tours', label: 'Tours', icon: 'flag' },
+        { id: 'events', label: 'Events', icon: 'calendar' },
+        { id: 'leaderboard', label: 'Rankings', icon: 'trophy' },
+        { id: 'bets', label: 'Bets', icon: 'hand-coins' },
+        { id: 'wallet', label: 'Wallet', icon: 'dollar-sign' },
+      ];
+
+      const renderView = () => {
+        switch (activeView) {
+          case 'dashboard': return <Dashboard user={user} setActiveView={setActiveView} setSelectedEvent={setSelectedEvent} />;
+          case 'tours': return <ToursView user={user} />;
+          case 'events': return <EventsView setActiveView={setActiveView} setSelectedEvent={setSelectedEvent} />;
+          case 'event': return <EventDetailView event={selectedEvent} user={user} setActiveView={setActiveView} />;
+          case 'leaderboard': return <LeaderboardView user={user} />;
+          case 'bets': return <SideBetsView user={user} />;
+          case 'wallet': return <WalletView user={user} />;
+          default: return <Dashboard user={user} setActiveView={setActiveView} setSelectedEvent={setSelectedEvent} />;
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-900">
+          <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800">
+            <div className="max-w-4xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center">
+                    <Icon name="flag" className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-white tracking-tight">Ametour</h1>
+                    <p className="text-xs text-slate-500">Virtual Country Club</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-slate-400 hover:text-white">
+                    <Icon name="bell" className="w-6 h-6" />
+                    {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">{unreadCount}</span>}
+                  </button>
+                  <button className="p-2 text-slate-400 hover:text-white">
+                    <Icon name="settings" className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {showNotifications && (
+            <div className="fixed inset-0 z-50" onClick={() => setShowNotifications(false)}>
+              <div className="absolute top-16 right-4 w-80 max-w-[calc(100vw-2rem)] bg-slate-800 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-slate-700">
+                  <h3 className="text-white font-bold">Notifications</h3>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {mockNotifications.map(notif => (
+                    <div key={notif.id} className={`p-4 border-b border-slate-700/50 ${!notif.read ? 'bg-slate-700/30' : ''}`}>
+                      <p className="text-white text-sm">{notif.message}</p>
+                      <p className="text-slate-500 text-xs mt-1">{notif.time}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
+            {renderView()}
+          </main>
+
+          <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-40">
+            <div className="max-w-4xl mx-auto px-2 py-2">
+              <div className="flex justify-around">
+                {tabs.map(tab => (
+                  <button key={tab.id} onClick={() => setActiveView(tab.id)}
+                    className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${activeView === tab.id || (activeView === 'event' && tab.id === 'events') ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                    <Icon name={tab.icon} className="w-5 h-5" />
+                    <span className="text-xs font-medium">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </nav>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
